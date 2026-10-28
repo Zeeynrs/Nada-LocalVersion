@@ -10,9 +10,11 @@ CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / APP
 COVERS_DIR = CACHE_DIR / "covers"
 LYRICS_CACHE_DIR = CACHE_DIR / "lyrics"
 DB_FILE = CACHE_DIR / "library.db"
+SCROBBLE_QUEUE_FILE = CACHE_DIR / "scrobble_queue.json"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 DEFAULT_MUSIC_DIR = str(Path.home() / "Music")
+DEFAULT_DISCORD_CLIENT_ID = "1124351748836732948"
 
 DEFAULTS = {
     "music_dirs": [DEFAULT_MUSIC_DIR],
@@ -22,6 +24,13 @@ DEFAULTS = {
     "visualizer": True,
     "visualizer_style": "bars",  # "bars" | "wave"
     "online_lyrics": True,       # fallback ke LRCLIB bila .lrc lokal tidak ada
+    "discord_rpc": True,         # Discord Rich Presence via IPC socket lokal
+    "discord_client_id": DEFAULT_DISCORD_CLIENT_ID,
+    "scrobble_enabled": False,
+    "listenbrainz_token": "",
+    "lastfm_api_key": "",
+    "lastfm_api_secret": "",
+    "lastfm_session_key": "",
     "eq_enabled": False,
     "eq_preset": "Flat",
     "eq_bands": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],

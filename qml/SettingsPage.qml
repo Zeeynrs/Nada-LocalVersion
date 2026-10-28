@@ -236,6 +236,76 @@ Item {
             }
 
             Section {
+                title: "Discord Rich Presence & Scrobbler"
+                SettingRow {
+                    label: "Discord Rich Presence (RPC Native)"
+                    hint: "Tampilkan lagu lokal yang sedang didengarkan di profil Discord lewat socket IPC lokal tanpa library tambahan."
+                    Rectangle {
+                        implicitWidth: 8; implicitHeight: 8; radius: 4
+                        color: integrations && integrations.discordConnected ? "#7ee08f" : Theme.faint
+                    }
+                    Switch {
+                        checked: session.discordRpc
+                        onToggled: session.discordRpc = checked
+                    }
+                }
+                SettingRow {
+                    label: "Scrobbler Offline (ListenBrainz / Last.fm)"
+                    hint: "Catat riwayat mendengarkan lagu lokal. Bila sedang offline, scrobble disimpan di antrean lokal (" + (integrations ? integrations.pendingScrobbles : 0) + " tertunda)."
+                    Switch {
+                        checked: session.scrobbleEnabled
+                        onToggled: session.scrobbleEnabled = checked
+                    }
+                }
+                SettingRow {
+                    visible: session.scrobbleEnabled
+                    label: "ListenBrainz User Token"
+                    hint: "Salin User Token dari listenbrainz.org/settings/"
+                    NTextField {
+                        Layout.preferredWidth: 260
+                        placeholderText: "Token ListenBrainz…"
+                        text: session.listenbrainzToken
+                        onEditingFinished: session.listenbrainzToken = text.trim()
+                    }
+                }
+                SettingRow {
+                    visible: session.scrobbleEnabled
+                    label: "Last.fm API Key & Secret"
+                    hint: "Opsional jika ingin scrobble ke Last.fm (API Key / Shared Secret / Session Key)."
+                    RowLayout {
+                        spacing: 6
+                        NTextField {
+                            Layout.preferredWidth: 120
+                            placeholderText: "API Key"
+                            text: session.lastfmApiKey
+                            onEditingFinished: session.lastfmApiKey = text.trim()
+                        }
+                        NTextField {
+                            Layout.preferredWidth: 120
+                            placeholderText: "Secret"
+                            text: session.lastfmApiSecret
+                            onEditingFinished: session.lastfmApiSecret = text.trim()
+                        }
+                        NTextField {
+                            Layout.preferredWidth: 120
+                            placeholderText: "Session Key"
+                            text: session.lastfmSessionKey
+                            onEditingFinished: session.lastfmSessionKey = text.trim()
+                        }
+                    }
+                }
+                RowLayout {
+                    visible: session.scrobbleEnabled && integrations && integrations.pendingScrobbles > 0
+                    spacing: 10
+                    NButton {
+                        text: "Kirim Antrean Scrobble (" + (integrations ? integrations.pendingScrobbles : 0) + ")"
+                        iconName: "refresh"
+                        onClicked: if (integrations) integrations.flushScrobbles()
+                    }
+                }
+            }
+
+            Section {
                 title: "Pintasan Keyboard"
                 GridLayout {
                     columns: 2

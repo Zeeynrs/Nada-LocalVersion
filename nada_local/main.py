@@ -9,6 +9,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
 from .config import Settings
+from .integrations import Integrations
 from .library import Library
 from .lyrics import Lyrics
 from .player import Player
@@ -43,6 +44,8 @@ def main():
     lyrics = Lyrics(player, settings, worker)
     visualizer = Visualizer()
     session = Session(settings, player, library, worker)
+    integrations = Integrations(player, settings, worker)
+    session.changed.connect(integrations._sync_discord)
 
     engine = QQmlApplicationEngine()
     engine.warnings.connect(lambda ws: [print("QML:", w.toString(), file=sys.stderr) for w in ws])
@@ -53,6 +56,7 @@ def main():
         ("library", library),
         ("lyrics", lyrics),
         ("visualizer", visualizer),
+        ("integrations", integrations),
     ):
         ctx.setContextProperty(name, obj)
 
@@ -77,6 +81,7 @@ def main():
         QTimer.singleShot(250, lambda: player.playFiles(cli_files))
 
     def shutdown():
+        integrations.shutdown()
         player.stop()
         visualizer.stop()
         worker.shutdown()

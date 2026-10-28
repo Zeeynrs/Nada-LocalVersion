@@ -127,3 +127,68 @@ class Session(QObject):
     def visualizerStyle(self, value: str):
         self.settings["visualizer_style"] = str(value)
         self.changed.emit()
+
+    # ---- Discord RPC & Scrobbler settings --------------------------------
+
+    @Property(bool, notify=changed)
+    def discordRpc(self):
+        return bool(self.settings["discord_rpc"])
+
+    @discordRpc.setter
+    def discordRpc(self, value: bool):
+        self.settings["discord_rpc"] = bool(value)
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def discordClientId(self):
+        return str(self.settings["discord_client_id"])
+
+    @discordClientId.setter
+    def discordClientId(self, value: str):
+        self.settings["discord_client_id"] = str(value).strip()
+        self.changed.emit()
+
+    @Property(bool, notify=changed)
+    def scrobbleEnabled(self):
+        return bool(self.settings["scrobble_enabled"])
+
+    @scrobbleEnabled.setter
+    def scrobbleEnabled(self, value: bool):
+        self.settings["scrobble_enabled"] = bool(value)
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def listenbrainzToken(self):
+        return str(self.settings["listenbrainz_token"])
+
+    @listenbrainzToken.setter
+    def listenbrainzToken(self, value: str):
+        self.settings["listenbrainz_token"] = str(value).strip()
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def lastfmApiKey(self):
+        return str(self.settings["lastfm_api_key"])
+
+    @lastfmApiKey.setter
+    def lastfmApiKey(self, value: str):
+        self.settings["lastfm_api_key"] = str(value).strip()
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def lastfmApiSecret(self):
+        return str(self.settings["lastfm_api_secret"])
+
+    @lastfmApiSecret.setter
+    def lastfmApiSecret(self, value: str):
+        self.settings["lastfm_api_secret"] = str(value).strip()
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def lastfmSessionKey(self):
+        return str(self.settings["lastfm_session_key"])
+
+    @lastfmSessionKey.setter
+    def lastfmSessionKey(self, value: str):
+        self.settings["lastfm_session_key"] = str(value).strip()
+        self.changed.emit()
