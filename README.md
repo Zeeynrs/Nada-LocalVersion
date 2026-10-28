@@ -11,10 +11,11 @@ ditulis dengan **Python + Qt Quick (QML)** dan ditenagai langsung oleh mesin aud
 ## Fitur Utama
 
 - **Mesin Audio `libmpv` Native (Bit-Perfect)**
-  - Mendukung hampir seluruh format audio lokal: `FLAC` (hingga 24-bit/192kHz), `MP3`, `OPUS`, `OGG`, `M4A`, `AAC`, `WAV`, `ALAC`, `WV`, `APE`, dan `DSD`.
+  - Mendukung hampir seluruh format audio lokal: `FLAC` (hingga 24-bit/192kHz), `MP3`, `OPUS`, `OGG`, `M4A`, `AAC`, `WAV`, `ALAC`, `WV`, `APE`, `DSD`, serta **CUE Sheet (`.cue`)** yang memecah satu file album utuh menjadi daftar track terpisah secara mulus.
   - **Gapless Playback**: Menghilangkan jeda hening antar lagu saat mendengarkan album live atau konsep.
   - **ReplayGain**: Menyamakan kerasnya volume antar lagu atau antar album secara otomatis.
   - **Pemilihan Perangkat Output Audio**: Beralih langsung antara speaker bawaan, headphone, DAC USB, atau output Bluetooth via PipeWire/ALSA.
+  - **Sleep Timer dengan Volume Fade-Out**: Timer tidur (15/30/45/60/90 menit atau akhir lagu saat ini) yang mengecilkan volume secara halus selama 10 detik terakhir sebelum menjeda musik.
 
 - **Equalizer 6-Band & Tempo/Pitch DSP Real-Time**
   - Equalizer 6-band aktif (`60Hz`, `150Hz`, `400Hz`, `1kHz`, `2kHz`, `15kHz`) yang memproses aliran audio secara langsung lewat filter `lavfi` di `libmpv`.
@@ -24,7 +25,8 @@ ditulis dengan **Python + Qt Quick (QML)** dan ditenagai langsung oleh mesin aud
     - **Aktif**: Tempo berubah tanpa mengubah nada vokal/instrumen.
     - **Nonaktif**: Kecepatan juga mengubah nada lagu (*gaya nightcore / slowed + reverb*).
 
-- **Tampilan Penuh (Immersive Player) & Estetika Ricing**
+- **Tampilan Penuh (Immersive Player), Mode Mini Player & Estetika Ricing**
+  - **Mode Mini Player (`Ctrl+M`)**: Menyusutkan jendela menjadi HUD melayang berukuran kompak (`360×128`) lengkap dengan cover album, lirik tersinkron satu baris, kontrol putar, dan tombol **Pin Always-on-Top** untuk menemani *coding* di tiling/floating WM.
   - Sampul album bergelombang (*scalloped cover*) dengan animasi zoom halus saat memutar lagu.
   - **Dual Visualizer Cava** di sekeliling cover:
     - Mode **Capsule Bars**: 72 bilah kapsul radial yang memantul mengikuti ritme audio.
@@ -33,18 +35,24 @@ ditulis dengan **Python + Qt Quick (QML)** dan ditenagai langsung oleh mesin aud
   - Warna aksen dinamis yang diekstrak secara otomatis dari cover album yang sedang diputar.
   - *Wavy seekbar* sinusoidal yang bergerak hidup saat musik berputar.
 
-- **Pustaka Musik Cepat (SQLite Inkremental)**
+- **Pustaka Musik Cepat (SQLite Inkremental), Penjelajah Folder & Editor Tag**
   - Pemindaian folder musik super cepat (default `~/Music`, mendukung penambahan multi-folder).
+  - **Penjelajah Struktur Folder Direktori**: Telusuri koleksi musik berdasarkan hierarki folder fisik di disk lengkap dengan navigasi *breadcrumb* dan tombol **Putar Folder**.
+  - **Quick Tag Metadata Editor**: Klik kanan lagu lalu pilih **Edit Tag Metadata…** untuk memperbaiki judul, artis, album, tahun rilis, dan nomor track langsung ke dalam file audio fisik sekaligus memperbarui database pustaka.
   - Ekstraksi metadata & *cover art* otomatis (parser FLAC native, `mutagen`, atau `ffprobe`).
-  - Dukungan otomatis untuk membaca dan mengimpor file playlist `.m3u` / `.m3u8`.
+  - Dukungan otomatis untuk membaca file **CUE Sheet (`.cue`)** dan playlist **`.m3u` / `.m3u8`**.
   - Buat dan kelola playlist lokal baru langsung dari sidebar.
   - Mendukung *Drag & Drop* file audio langsung ke jendela aplikasi.
-  - Menu konteks klik kanan: buka album, buka artis, buka folder file di File Manager, atau salin path file.
 
-- **Lirik Tersinkron Hibrida**
+- **Lirik Tersinkron Hibrida & Ekspor `.lrc` Lokal**
   - **Prioritas 1**: File lirik `.lrc` lokal di folder yang sama dengan file audio.
   - **Prioritas 2**: Tag lirik yang tertanam di metadata file audio (`LYRICS`, `USLT`).
-  - **Prioritas 3 (Fallback)**: Mengambil lirik tersinkron otomatis dari database publik [LRCLIB](https://lrclib.net) dan menyimpannya di cache lokal agar dapat diakses offline untuk pemutaran berikutnya.
+  - **Prioritas 3 (Fallback)**: Mengambil lirik tersinkron otomatis dari database publik [LRCLIB](https://lrclib.net) dan menyimpannya di cache lokal.
+  - **Simpan ke Berkas `.lrc`**: Ekspor lirik hasil unduhan menjadi file `.lrc` fisik di samping file audio dengan sekali klik (atau aktifkan penyimpanan `.lrc` otomatis di Pengaturan).
+
+- **Discord Rich Presence & Scrobbler Offline Native**
+  - **Discord Rich Presence (Tanpa Dependensi Tambahan)**: Menampilkan judul lagu, artis, album, dan hitung mundur durasi lagu di profil Discord langsung lewat Unix IPC socket lokal.
+  - **Scrobbler ListenBrainz & Last.fm dengan Antrean Offline**: Mencatat riwayat lagu yang didengarkan. Bila sedang tidak ada koneksi internet, riwayat scrobble disimpan di antrean lokal dan dikirim otomatis saat kembali online.
 
 - **Integrasi Penuh Desktop Linux (MPRIS2)**
   - Kontrol pemutaran lewat `playerctl`, tombol media keyboard, Hyprlock, Swaylock, dan status bar (Waybar, Eww, Polybar).
@@ -120,6 +128,7 @@ python3 run.py ~/Music/lagu_favorit.flac
 | <kbd>Ctrl</kbd> + <kbd>↓</kbd> | Turunkan volume |
 | <kbd>Ctrl</kbd> + <kbd>F</kbd> | Buka halaman Pencarian |
 | <kbd>Ctrl</kbd> + <kbd>R</kbd> | Pindai ulang pustaka folder musik |
+| <kbd>Ctrl</kbd> + <kbd>M</kbd> | Masuk / keluar mode Mini Player (*Floating HUD*) |
 | <kbd>Ctrl</kbd> + <kbd>L</kbd> | Buka / tutup tampilan penuh (*Immersive Player*) |
 | <kbd>Ctrl</kbd> + <kbd>,</kbd> | Buka halaman Pengaturan |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> | Keluar dari aplikasi |
