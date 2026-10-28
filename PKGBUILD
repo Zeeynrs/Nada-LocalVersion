@@ -4,7 +4,7 @@ pkgver=0.1.0.r1
 pkgrel=1
 pkgdesc="Pemutar musik lokal Hi-Fi ringan untuk desktop Linux (Python + Qt Quick + libmpv)"
 arch=('any')
-url="https://github.com/Zeeynrs/Nada-Local"
+url="https://github.com/Zeeynrs/Nada-LocalVersion"
 license=('GPL-3.0-or-later')
 depends=(
     'python'
