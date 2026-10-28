@@ -248,6 +248,7 @@ Item {
                             "Ctrl + ↑ / ↓", "Volume naik / turun",
                             "Ctrl + F", "Cari di pustaka lokal",
                             "Ctrl + R", "Pindai ulang folder musik",
+                            "Ctrl + M", "Mode Mini Player (Floating HUD)",
                             "Ctrl + L", "Tampilan penuh + lirik + EQ",
                             "Alt + ← / Esc", "Kembali / tutup tampilan penuh",
                             "Ctrl + ,", "Pengaturan"

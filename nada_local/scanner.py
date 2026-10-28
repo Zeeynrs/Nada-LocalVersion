@@ -611,6 +611,9 @@ class LibraryDB:
         if context_uri.startswith("local:playlist:"):
             pid = context_uri.split(":", 2)[2]
             return self.get_playlist(pid).get("tracks", [])
+        if context_uri.startswith("local:folder:"):
+            folder_path = context_uri.split(":", 2)[2]
+            return self.get_folder_tracks(folder_path)
         return self.get_all_tracks()
 
     def record_play(self, uri: str):
@@ -1019,3 +1022,124 @@ class LibraryDB:
             albums = conn.execute("SELECT COUNT(DISTINCT albumId) FROM tracks").fetchone()[0]
             artists = conn.execute("SELECT COUNT(DISTINCT artistId) FROM tracks").fetchone()[0]
             return {"tracks": tracks, "albums": albums, "artists": artists}
+
+    def get_folder_tracks(self, folder_path: str) -> list[dict]:
+        norm = str(Path(os.path.expanduser(folder_path)).resolve())
+        prefix = norm.rstrip("/") + "/"
+        with self._connect() as conn:
+            liked = self._liked_set(conn)
+            rows = conn.execute(
+                "SELECT * FROM tracks WHERE path LIKE ? ORDER BY path COLLATE NOCASE, trackNum",
+                (prefix + "%",),
+            ).fetchall()
+            return [self._row_to_track(r, liked) for r in rows]
+
+    def browse_folder(self, root_dirs: list[str], current_dir: str = "") -> dict:
+        roots = [str(Path(os.path.expanduser(d)).resolve()) for d in root_dirs if d]
+        if not current_dir and len(roots) == 1:
+            current_dir = roots[0]
+
+        if not current_dir:
+            # Show root directories list
+            folders = []
+            for r in roots:
+                p = Path(r)
+                cnt = len(self.get_folder_tracks(r))
+                folders.append({
+                    "name": p.name or r,
+                    "path": r,
+                    "subtitle": f"{r} • {cnt} lagu",
+                    "trackCount": cnt,
+                    "uri": f"local:folder:{r}",
+                })
+            return {
+                "currentPath": "",
+                "currentName": "Folder Pustaka Musik",
+                "parentPath": "",
+                "canGoUp": False,
+                "folders": folders,
+                "tracks": [],
+                "playUri": "local:all",
+            }
+
+        cur_path = Path(os.path.expanduser(current_dir)).resolve()
+        cur_str = str(cur_path)
+        prefix = cur_str.rstrip("/") + "/"
+
+        with self._connect() as conn:
+            liked = self._liked_set(conn)
+            rows = conn.execute(
+                "SELECT * FROM tracks WHERE path LIKE ? ORDER BY trackNum, name COLLATE NOCASE",
+                (prefix + "%",),
+            ).fetchall()
+
+        direct_tracks = []
+        subfolders_map: dict[str, dict] = {}
+
+        for r in rows:
+            t_path = Path(r["path"])
+            try:
+                rel = t_path.relative_to(cur_path)
+            except ValueError:
+                continue
+            parts = rel.parts
+            if len(parts) == 1:
+                direct_tracks.append(self._row_to_track(r, liked))
+            elif len(parts) > 1:
+                sub_name = parts[0]
+                sub_full = str(cur_path / sub_name)
+                entry = subfolders_map.get(sub_full)
+                if not entry:
+                    subfolders_map[sub_full] = {
+                        "name": sub_name,
+                        "path": sub_full,
+                        "trackCount": 1,
+                        "image": r["image"] or "",
+                        "uri": f"local:folder:{sub_full}",
+                    }
+                else:
+                    entry["trackCount"] += 1
+                    if not entry["image"] and r["image"]:
+                        entry["image"] = r["image"]
+
+        # Also include direct physical subdirectories on disk even if not yet scanned or containing nested folders
+        if cur_path.is_dir():
+            try:
+                for child in sorted(cur_path.iterdir(), key=lambda x: x.name.lower()):
+                    if child.is_dir() and not child.name.startswith("."):
+                        c_str = str(child.resolve())
+                        if c_str not in subfolders_map:
+                            subfolders_map[c_str] = {
+                                "name": child.name,
+                                "path": c_str,
+                                "trackCount": 0,
+                                "image": _find_folder_cover(child),
+                                "uri": f"local:folder:{c_str}",
+                            }
+            except OSError:
+                pass
+
+        folders = sorted(subfolders_map.values(), key=lambda f: f["name"].lower())
+        for f in folders:
+            f["subtitle"] = f"{f['trackCount']} lagu" if f["trackCount"] > 0 else "Folder"
+
+        is_root = cur_str in roots
+        parent_str = ""
+        can_go_up = False
+        if not is_root and cur_path.parent != cur_path:
+            parent_str = str(cur_path.parent)
+            can_go_up = True
+        elif is_root and len(roots) > 1:
+            parent_str = ""
+            can_go_up = True
+
+        return {
+            "currentPath": cur_str,
+            "currentName": cur_path.name or cur_str,
+            "parentPath": parent_str,
+            "canGoUp": can_go_up,
+            "folders": folders,
+            "tracks": direct_tracks,
+            "totalRecursive": len(rows),
+            "playUri": f"local:folder:{cur_str}",
+        }

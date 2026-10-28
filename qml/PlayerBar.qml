@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Item {
     id: bar
     signal openImmersive()
+    signal openMini()
     readonly property var s: player.state
     readonly property real sideWidth: Math.max(240, width * 0.28)
 
@@ -76,13 +77,63 @@ Item {
         SeekBar { width: parent.width }
     }
 
-    // right: extras
+    // right: extras (Sleep Timer, Mini Player, Immersive, Devices, Volume)
     Row {
         anchors.right: parent.right
         anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
 
+        // Sleep Timer button + countdown badge
+        AbstractButton {
+            id: sleepBtn
+            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: 36
+            implicitWidth: player.sleepMode !== "off" ? (sleepRow.implicitWidth + 18) : 36
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            onClicked: sleepPopup.opened ? sleepPopup.close() : sleepPopup.open()
+            background: Rectangle {
+                radius: 18
+                color: player.sleepMode !== "off" ? Theme.alpha(Theme.accent, 0.16)
+                     : sleepBtn.hovered ? Theme.alpha(Theme.text, 0.08) : "transparent"
+            }
+            contentItem: Row {
+                id: sleepRow
+                anchors.centerIn: parent
+                spacing: 5
+                Label {
+                    text: "🌙"
+                    font.pixelSize: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
+                    visible: player.sleepMode !== "off"
+                    text: player.sleepLabel
+                    font.family: Theme.mono
+                    font.pixelSize: 11
+                    font.weight: Font.Bold
+                    color: Theme.accent
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            ToolTip.visible: sleepBtn.hovered
+            ToolTip.text: player.sleepMode !== "off" ? ("Sleep Timer: " + player.sleepLabel) : "Sleep Timer (Pengatur Waktu Tidur)"
+            ToolTip.delay: 400
+
+            SleepTimerPopup {
+                id: sleepPopup
+                x: sleepBtn.width - width
+                y: -height - 16
+            }
+        }
+
+        IconButton {
+            anchors.verticalCenter: parent.verticalCenter
+            iconName: "smartphone"
+            tip: "Mode Mini Player (Ctrl+M)"
+            onClicked: bar.openMini()
+        }
         IconButton {
             anchors.verticalCenter: parent.verticalCenter
             iconName: "lyrics"

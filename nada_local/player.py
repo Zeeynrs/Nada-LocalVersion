@@ -62,6 +62,7 @@ class Player(QObject):
     trackChanged = Signal()
     likedChanged = Signal(str, bool)
     dspChanged = Signal()
+    sleepChanged = Signal()
 
     def __init__(self, db: LibraryDB, worker, settings, parent=None):
         super().__init__(parent)
@@ -79,6 +80,11 @@ class Player(QObject):
         self._accent: str = DEFAULT_ACCENT
         self._devices: list[dict] = []
         self._switching_track: bool = False
+
+        self._sleep_mode: str = "off"
+        self._sleep_deadline: float = 0.0
+        self._sleep_remaining: int = 0
+        self._sleep_pre_fade_vol: int | None = None
 
         self._state = {
             "hasTrack": False,
@@ -192,6 +198,77 @@ class Player(QObject):
         self.mpv.set_speed(self.settings["tempo"], bool(on))
         self.dspChanged.emit()
 
+    # ---- Sleep Timer + Smooth Volume Fade-Out ---------------------------
+
+    @Property(str, notify=sleepChanged)
+    def sleepMode(self):
+        return self._sleep_mode
+
+    @Property(int, notify=sleepChanged)
+    def sleepRemainingSec(self):
+        return self._sleep_remaining
+
+    @Property(str, notify=sleepChanged)
+    def sleepLabel(self):
+        if self._sleep_mode == "off":
+            return ""
+        if self._sleep_mode == "end_of_track":
+            return "Akhir lagu"
+        m, s = divmod(max(0, self._sleep_remaining), 60)
+        return f"{m}:{s:02d}"
+
+    @Slot(str)
+    def setSleepTimer(self, mode: str):
+        # Restore original volume if cancelling during a fade
+        if self._sleep_pre_fade_vol is not None:
+            self.mpv.set_volume(self._sleep_pre_fade_vol)
+            self._sleep_pre_fade_vol = None
+
+        mode = (mode or "off").strip()
+        if mode in ("15", "30", "45", "60"):
+            mins = int(mode)
+            self._sleep_mode = mode
+            self._sleep_deadline = time.monotonic() + mins * 60
+            self._sleep_remaining = mins * 60
+            self.worker.error.emit(f"Sleep Timer diatur: {mins} menit")
+        elif mode == "end_of_track":
+            self._sleep_mode = "end_of_track"
+            self._sleep_deadline = 0.0
+            self._sleep_remaining = 0
+            self.worker.error.emit("Sleep Timer: berhenti setelah lagu ini selesai")
+        else:
+            self._sleep_mode = "off"
+            self._sleep_deadline = 0.0
+            self._sleep_remaining = 0
+        self.sleepChanged.emit()
+
+    def _check_sleep_timer(self):
+        if self._sleep_mode not in ("15", "30", "45", "60") or self._sleep_deadline <= 0:
+            return
+        rem = self._sleep_deadline - time.monotonic()
+        sec = max(0, int(rem))
+        if sec != self._sleep_remaining:
+            self._sleep_remaining = sec
+            self.sleepChanged.emit()
+
+        # Smooth fade out over the final 10 seconds
+        if 0 < rem <= 10.0 and self._state.get("isPlaying"):
+            if self._sleep_pre_fade_vol is None:
+                self._sleep_pre_fade_vol = int(self._state.get("volume", 85))
+            faded_vol = max(1, int(self._sleep_pre_fade_vol * (rem / 10.0)))
+            self.mpv.set_volume(faded_vol)
+        elif rem <= 0:
+            orig_vol = self._sleep_pre_fade_vol if self._sleep_pre_fade_vol is not None else int(self._state.get("volume", 85))
+            self._sleep_pre_fade_vol = None
+            self._sleep_mode = "off"
+            self._sleep_deadline = 0.0
+            self._sleep_remaining = 0
+            self.mpv.set_pause(True)
+            self.mpv.set_volume(orig_vol)
+            self._patch(isPlaying=False)
+            self.sleepChanged.emit()
+            self.worker.error.emit("Sleep Timer selesai — pemutaran dijeda")
+
     # ---- lifecycle & tick -----------------------------------------------
 
     def start(self):
@@ -208,6 +285,7 @@ class Player(QObject):
         self.tick_timer.setInterval(100 if fast else 300)
 
     def _tick(self):
+        self._check_sleep_timer()
         loaded, eof, err_msg = self.mpv.poll_events()
         if err_msg:
             self.worker.error.emit(err_msg)
@@ -225,6 +303,16 @@ class Player(QObject):
                 self.positionChanged.emit()
 
     def _on_track_finished(self):
+        if self._sleep_mode == "end_of_track":
+            self._sleep_mode = "off"
+            self._sleep_remaining = 0
+            self.mpv.stop_playback()
+            self._position_ms = 0
+            self._patch(isPlaying=False)
+            self.positionChanged.emit()
+            self.sleepChanged.emit()
+            self.worker.error.emit("Sleep Timer selesai — berhenti di akhir lagu")
+            return
         rep = self._state.get("repeat", "off")
         if rep == "track" and self._state.get("hasTrack"):
             self.seek(0)

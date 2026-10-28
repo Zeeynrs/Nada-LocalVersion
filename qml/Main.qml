@@ -5,11 +5,32 @@ ApplicationWindow {
     id: win
     width: 1280
     height: 800
-    minimumWidth: 900
-    minimumHeight: 600
+    minimumWidth: miniMode ? 340 : 900
+    minimumHeight: miniMode ? 124 : 600
     visible: true
     title: player.state.hasTrack ? player.state.name + " • " + player.state.artists + " — Nada Local" : "Nada Local"
     color: Theme.bg
+    flags: pinned ? (Qt.Window | Qt.WindowStaysOnTopHint) : Qt.Window
+
+    property bool miniMode: false
+    property bool pinned: false
+    property int _savedW: 1280
+    property int _savedH: 800
+
+    function toggleMiniMode() {
+        if (!miniMode) {
+            _savedW = Math.max(900, width)
+            _savedH = Math.max(600, height)
+            miniMode = true
+            width = 390
+            height = 136
+        } else {
+            miniMode = false
+            pinned = false
+            width = _savedW
+            height = _savedH
+        }
+    }
 
     palette {
         window: Theme.bg
@@ -39,6 +60,21 @@ ApplicationWindow {
 
     AppShell {
         anchors.fill: parent
+        visible: !win.miniMode
+        onEnterMini: win.toggleMiniMode()
+    }
+
+    MiniPlayerView {
+        anchors.fill: parent
+        visible: win.miniMode
+        pinned: win.pinned
+        onExitMini: win.toggleMiniMode()
+        onTogglePin: win.pinned = !win.pinned
+    }
+
+    Shortcut {
+        sequence: "Ctrl+M"
+        onActivated: win.toggleMiniMode()
     }
 
     // Drag & drop local audio files directly into the window

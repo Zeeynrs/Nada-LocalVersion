@@ -10,6 +10,7 @@ class Library(QObject):
     meChanged = Signal()
     playlistsChanged = Signal()
     homeChanged = Signal()
+    folderChanged = Signal()
     scanningChanged = Signal()
     loaded = Signal(str, "QVariantMap")
     searchFinished = Signal(str, "QVariantMap")
@@ -26,6 +27,7 @@ class Library(QObject):
         self._me = {"id": "local", "name": username, "image": ""}
         self._playlists = []
         self._home = {"recent": [], "topTracks": [], "topArtists": []}
+        self._folder_view = {"currentPath": "", "currentName": "Folder", "canGoUp": False, "folders": [], "tracks": []}
 
     @Property("QVariantMap", notify=meChanged)
     def me(self):
@@ -46,6 +48,23 @@ class Library(QObject):
     @Property("QVariantMap", notify=meChanged)
     def stats(self):
         return self._stats
+
+    @Property("QVariantMap", notify=folderChanged)
+    def folderView(self):
+        return self._folder_view
+
+    @Slot(str)
+    def browseFolder(self, path: str = ""):
+        dirs = list(self.settings["music_dirs"])
+        self.worker.run(
+            lambda: self.db.browse_folder(dirs, path),
+            self._set_folder_view,
+            lambda e: self.toast.emit(f"Gagal membuka folder: {e}"),
+        )
+
+    def _set_folder_view(self, data: dict):
+        self._folder_view = data
+        self.folderChanged.emit()
 
     def _set_scanning(self, val: bool):
         if self._scanning != val:

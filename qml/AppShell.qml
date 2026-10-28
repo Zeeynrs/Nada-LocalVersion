@@ -6,6 +6,7 @@ Item {
     id: shell
     objectName: "shell"
     property bool immersive: false
+    signal enterMini()
 
     function navigate(kind, itemId) {
         const key = kind + ":" + itemId
@@ -15,12 +16,14 @@ Item {
             stack.pop(null)
             return
         }
-        if (cur === key || cur === kind || !kind || (kind !== "liked" && kind !== "search" && kind !== "settings" && !itemId))
+        if (cur === key || cur === kind || !kind || (kind !== "liked" && kind !== "search" && kind !== "settings" && kind !== "folders" && !itemId))
             return
         if (kind === "playlist" || kind === "album" || kind === "liked")
             stack.push(collectionComp, { kind: kind, itemId: itemId })
         else if (kind === "artist")
             stack.push(artistComp, { itemId: itemId })
+        else if (kind === "folders")
+            stack.push(foldersComp)
         else if (kind === "search")
             stack.push(searchComp)
         else if (kind === "settings")
@@ -101,6 +104,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 96
             onOpenImmersive: shell.immersive = true
+            onOpenMini: shell.enterMini()
         }
     }
 
@@ -125,6 +129,7 @@ Item {
 
     Component { id: collectionComp; CollectionPage {} }
     Component { id: artistComp; ArtistPage {} }
+    Component { id: foldersComp; FoldersPage {} }
     Component { id: searchComp; SearchPage {} }
     Component { id: settingsComp; SettingsPage {} }
 

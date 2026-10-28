@@ -50,7 +50,8 @@ Item {
 
         NavItem { Layout.fillWidth: true; text: "Beranda"; iconName: "home"; active: side.currentKey === "home"; onClicked: Nav.go("home") }
         NavItem { Layout.fillWidth: true; text: "Cari"; iconName: "search"; active: side.currentKey === "search"; onClicked: Nav.go("search") }
-        NavItem { Layout.fillWidth: true; text: "Semua Lagu"; iconName: "library"; active: side.currentKey === "playlist:all"; onClicked: Nav.go("playlist", "all") }
+        NavItem { Layout.fillWidth: true; text: "Semua Lagu"; iconName: "note"; active: side.currentKey === "playlist:all"; onClicked: Nav.go("playlist", "all") }
+        NavItem { Layout.fillWidth: true; text: "Folder Musik"; iconName: "library"; active: side.currentKey === "folders"; onClicked: Nav.go("folders") }
         NavItem { Layout.fillWidth: true; text: "Lagu Disukai"; iconName: "heart"; active: side.currentKey === "liked:"; onClicked: Nav.go("liked") }
 
         RowLayout {

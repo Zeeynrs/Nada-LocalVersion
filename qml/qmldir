@@ -7,6 +7,7 @@ CollectionPage 1.0 CollectionPage.qml
 Cover 1.0 Cover.qml
 DevicesPopup 1.0 DevicesPopup.qml
 EqualizerView 1.0 EqualizerView.qml
+FoldersPage 1.0 FoldersPage.qml
 HomePage 1.0 HomePage.qml
 IconButton 1.0 IconButton.qml
 Icon 1.0 Icon.qml
@@ -14,6 +15,7 @@ ImmersivePlayer 1.0 ImmersivePlayer.qml
 LinkLabel 1.0 LinkLabel.qml
 LyricsView 1.0 LyricsView.qml
 Main 1.0 Main.qml
+MiniPlayerView 1.0 MiniPlayerView.qml
 NavItem 1.0 NavItem.qml
 singleton Nav 1.0 Nav.qml
 NButton 1.0 NButton.qml
@@ -28,6 +30,7 @@ SearchPage 1.0 SearchPage.qml
 SeekBar 1.0 SeekBar.qml
 SettingsPage 1.0 SettingsPage.qml
 Sidebar 1.0 Sidebar.qml
+SleepTimerPopup 1.0 SleepTimerPopup.qml
 singleton Theme 1.0 Theme.qml
 Toast 1.0 Toast.qml
 TrackRow 1.0 TrackRow.qml
