@@ -69,6 +69,9 @@ class MpvEngine:
         self._lib = _load_libmpv()
         self._ctx = None
         self.version = ""
+        self._seg_start_ms = 0
+        self._seg_end_ms = 0
+        self._pending_seek_ms = 0
         if not self._lib:
             return
 
@@ -132,13 +135,19 @@ class MpvEngine:
 
     # ---- Playback control ------------------------------------------------
 
-    def play_file(self, filepath: str):
+    def play_file(self, filepath: str, start_ms: int = 0, end_ms: int = 0):
         if not self._ctx:
             return
+        self._seg_start_ms = max(0, int(start_ms or 0))
+        self._seg_end_ms = max(0, int(end_ms or 0))
+        self._pending_seek_ms = self._seg_start_ms
         self.command("loadfile", filepath, "replace")
         self.set_prop("pause", "no")
 
     def stop_playback(self):
+        self._seg_start_ms = 0
+        self._seg_end_ms = 0
+        self._pending_seek_ms = 0
         if self._ctx:
             self.command("stop")
 
@@ -149,23 +158,32 @@ class MpvEngine:
         return self.get_str("pause") == "yes"
 
     def seek_ms(self, ms: int):
-        sec = max(0.0, ms / 1000.0)
+        abs_ms = self._seg_start_ms + max(0, int(ms))
+        if self._seg_end_ms > 0:
+            abs_ms = min(abs_ms, self._seg_end_ms)
+        sec = max(0.0, abs_ms / 1000.0)
         self.command("seek", f"{sec:.3f}", "absolute")
 
     def set_volume(self, pct: int):
         self.set_prop("volume", str(max(0, min(100, int(pct)))))
 
-    def get_position_ms(self) -> int:
+    def _raw_position_ms(self) -> int:
         val = self.get_str("time-pos")
         try:
             return max(0, int(float(val) * 1000))
         except ValueError:
             return 0
 
+    def get_position_ms(self) -> int:
+        return max(0, self._raw_position_ms() - self._seg_start_ms)
+
     def get_duration_ms(self) -> int:
+        if self._seg_end_ms > self._seg_start_ms > 0 or self._seg_end_ms > 0:
+            return max(0, self._seg_end_ms - self._seg_start_ms)
         val = self.get_str("duration")
         try:
-            return max(0, int(float(val) * 1000))
+            raw_dur = max(0, int(float(val) * 1000))
+            return max(0, raw_dur - self._seg_start_ms)
         except ValueError:
             return 0
 
@@ -271,12 +289,18 @@ class MpvEngine:
                 break
             if ev_id == MPV_EVENT_FILE_LOADED:
                 loaded = True
+                if self._pending_seek_ms > 0:
+                    sec = self._pending_seek_ms / 1000.0
+                    self.command("seek", f"{sec:.3f}", "absolute")
+                    self._pending_seek_ms = 0
             elif ev_id == MPV_EVENT_END_FILE and ev_ptr.contents.data:
                 end = ctypes.cast(ev_ptr.contents.data, ctypes.POINTER(_MpvEventEndFile)).contents
                 if end.reason == MPV_END_FILE_REASON_EOF:
                     eof = True
                 elif end.reason == MPV_END_FILE_REASON_ERROR:
                     err_msg = "Format file audio tidak didukung atau file rusak."
+        if not eof and self._seg_end_ms > 0 and self._raw_position_ms() >= self._seg_end_ms:
+            eof = True
         return loaded, eof, err_msg
 
     def shutdown(self):

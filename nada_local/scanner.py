@@ -317,6 +317,198 @@ def inspect_audio_file(path: Path) -> dict:
     }
 
 
+def _cue_time_to_ms(mm_ss_ff: str) -> int:
+    parts = mm_ss_ff.strip().split(":")
+    if len(parts) != 3:
+        return 0
+    try:
+        m, s, f = int(parts[0]), int(parts[1]), int(parts[2])
+        return (m * 60 + s) * 1000 + int((f * 1000) / 75)
+    except ValueError:
+        return 0
+
+
+def parse_cue_sheet(cue_path: Path) -> tuple[list[dict], set[str]]:
+    """Parse a .cue sheet into individual virtual tracks and return (tracks, covered_audio_paths)."""
+    try:
+        raw_text = cue_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return [], set()
+
+    album_title = cue_path.stem
+    album_artist = "Artis Tidak Diketahui"
+    year = ""
+    current_file: Path | None = None
+    raw_tracks: list[dict] = []
+    current_track: dict | None = None
+
+    for line in raw_text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        up = s.upper()
+        if up.startswith("REM DATE"):
+            parts = s.split(None, 2)
+            if len(parts) >= 3:
+                year = parts[2].strip(' "\'')[:4]
+        elif up.startswith("PERFORMER ") and current_track is None:
+            album_artist = s[10:].strip(' "\'')
+        elif up.startswith("TITLE ") and current_track is None:
+            album_title = s[6:].strip(' "\'')
+        elif up.startswith("FILE "):
+            if current_track and current_file:
+                raw_tracks.append(current_track)
+                current_track = None
+            first_q = s.find('"')
+            last_q = s.rfind('"')
+            if 0 <= first_q < last_q:
+                fn = s[first_q + 1:last_q]
+            else:
+                parts = s.split()
+                fn = parts[1] if len(parts) > 1 else ""
+            candidate = (cue_path.parent / fn).resolve()
+            current_file = candidate if candidate.is_file() else None
+        elif up.startswith("TRACK "):
+            if current_track and current_file:
+                raw_tracks.append(current_track)
+            parts = s.split()
+            t_num = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else (len(raw_tracks) + 1)
+            current_track = {
+                "file": current_file,
+                "trackNum": t_num,
+                "title": f"Track {t_num:02d}",
+                "artist": album_artist,
+                "startMs": 0,
+            }
+        elif current_track is not None:
+            if up.startswith("TITLE "):
+                current_track["title"] = s[6:].strip(' "\'')
+            elif up.startswith("PERFORMER "):
+                current_track["artist"] = s[10:].strip(' "\'')
+            elif up.startswith("INDEX 01 "):
+                current_track["startMs"] = _cue_time_to_ms(s[9:])
+
+    if current_track and current_track.get("file"):
+        raw_tracks.append(current_track)
+
+    if not raw_tracks:
+        return [], set()
+
+    # Inspect referenced audio files once
+    file_info_cache: dict[str, dict] = {}
+    covered_paths: set[str] = set()
+    for rt in raw_tracks:
+        f_path: Path | None = rt.get("file")
+        if f_path and f_path.is_file():
+            rp = str(f_path.resolve())
+            covered_paths.add(rp)
+            if rp not in file_info_cache:
+                file_info_cache[rp] = inspect_audio_file(f_path)
+
+    aid = stable_id("alb", f"{album_artist}::{album_title}")
+    cue_stat = cue_path.stat()
+    result: list[dict] = []
+
+    for idx, rt in enumerate(raw_tracks):
+        f_path = rt.get("file")
+        if not f_path or not f_path.is_file():
+            continue
+        rp = str(f_path.resolve())
+        base = file_info_cache[rp]
+        start_ms = int(rt["startMs"])
+        end_ms = int(base["durationMs"])
+        if idx + 1 < len(raw_tracks) and raw_tracks[idx + 1].get("file") == f_path:
+            end_ms = int(raw_tracks[idx + 1]["startMs"])
+        dur_ms = max(0, end_ms - start_ms)
+
+        quoted_path = quote(rp, safe="/:@!$&'()*+,;=-._~")
+        uri = f"cue://{quoted_path}#{rt['trackNum']}:{start_ms}:{end_ms}"
+        tid = stable_id("cue", uri)
+        artist = rt["artist"] or album_artist
+        arid = stable_id("art", artist.split(",")[0].strip())
+
+        result.append({
+            "uri": uri,
+            "id": tid,
+            "path": rp,
+            "mtime": cue_stat.st_mtime,
+            "size": cue_stat.st_size,
+            "name": rt["title"],
+            "artists": artist,
+            "artistId": arid,
+            "album": album_title,
+            "albumId": aid,
+            "year": year or base.get("year", ""),
+            "trackNum": rt["trackNum"],
+            "durationMs": dur_ms,
+            "bitrate": base.get("bitrate", 0),
+            "sampleRate": base.get("sampleRate", 0),
+            "format": f"{base.get('format', 'CUE')}•CUE",
+            "image": base.get("image", ""),
+            "imageSmall": base.get("image", ""),
+            "imageLarge": base.get("image", ""),
+            "embeddedLyrics": "",
+        })
+
+    return result, covered_paths
+
+
+def write_audio_tags(filepath: str, title: str, artists: str, album: str, year: str, track_num: int) -> bool:
+    """Write metadata tags directly to a local audio file (via mutagen or lossless ffmpeg remux)."""
+    p = Path(filepath)
+    if not p.is_file():
+        return False
+
+    # Try mutagen first if available
+    try:
+        import mutagen
+        audio = mutagen.File(str(p), easy=True)
+        if audio is not None:
+            audio["title"] = [title]
+            audio["artist"] = [artists]
+            audio["album"] = [album]
+            if year:
+                audio["date"] = [year]
+            if track_num > 0:
+                audio["tracknumber"] = [str(track_num)]
+            audio.save()
+            return True
+    except Exception:
+        pass
+
+    # Fallback to lossless stream copy via ffmpeg
+    if not shutil.which("ffmpeg"):
+        return False
+    tmp_out = p.with_name(f".nada_tag_tmp_{p.name}")
+    try:
+        cmd = [
+            "ffmpeg", "-y", "-v", "quiet",
+            "-i", str(p),
+            "-map", "0", "-c", "copy",
+            "-metadata", f"title={title}",
+            "-metadata", f"artist={artists}",
+            "-metadata", f"album={album}",
+        ]
+        if year:
+            cmd.extend(["-metadata", f"date={year}"])
+        if track_num > 0:
+            cmd.extend(["-metadata", f"track={track_num}"])
+        cmd.append(str(tmp_out))
+        res = subprocess.run(cmd, capture_output=True, timeout=15)
+        if res.returncode == 0 and tmp_out.is_file() and tmp_out.stat().st_size > 0:
+            os.replace(tmp_out, p)
+            return True
+    except Exception:
+        pass
+    finally:
+        if tmp_out.exists():
+            try:
+                tmp_out.unlink()
+            except OSError:
+                pass
+    return False
+
+
 class LibraryDB:
     """Thread-safe SQLite store for local tracks, playlists, likes, and play history."""
 
@@ -337,7 +529,7 @@ class LibraryDB:
                 CREATE TABLE IF NOT EXISTS tracks (
                     uri TEXT PRIMARY KEY,
                     id TEXT,
-                    path TEXT UNIQUE,
+                    path TEXT,
                     mtime REAL,
                     size INTEGER,
                     name TEXT,
@@ -355,6 +547,7 @@ class LibraryDB:
                     embeddedLyrics TEXT,
                     addedAt REAL
                 );
+                CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
                 CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(albumId);
                 CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artistId);
 
@@ -390,6 +583,7 @@ class LibraryDB:
         """Scan music directories incrementally and return summary statistics."""
         found_audio: list[Path] = []
         found_m3u: list[Path] = []
+        found_cue: list[Path] = []
         seen_paths: set[str] = set()
 
         for raw_dir in dirs:
@@ -399,6 +593,8 @@ class LibraryDB:
             if root.is_file():
                 if root.suffix.lower() in AUDIO_EXTS:
                     found_audio.append(root)
+                elif root.suffix.lower() == ".cue":
+                    found_cue.append(root)
                 continue
             for dirpath, dirnames, filenames in os.walk(root):
                 dirnames[:] = [d for d in dirnames if not d.startswith(".")]
@@ -414,6 +610,18 @@ class LibraryDB:
                             found_audio.append(p)
                     elif ext in PLAYLIST_EXTS:
                         found_m3u.append(p)
+                    elif ext == ".cue":
+                        found_cue.append(p)
+
+        cue_records: list[dict] = []
+        cue_covered_files: set[str] = set()
+        for cue_file in found_cue:
+            c_tracks, c_covered = parse_cue_sheet(cue_file)
+            cue_records.extend(c_tracks)
+            cue_covered_files.update(c_covered)
+
+        if cue_covered_files:
+            found_audio = [p for p in found_audio if str(p.resolve()) not in cue_covered_files]
 
         with self._connect() as conn:
             existing = {
@@ -432,14 +640,19 @@ class LibraryDB:
             if not old or abs(old[0] - st.st_mtime) > 0.01 or old[1] != st.st_size:
                 to_inspect.append(p)
 
-        new_records = [inspect_audio_file(p) for p in to_inspect]
+        new_records = [inspect_audio_file(p) for p in to_inspect] + cue_records
         now = time.time()
 
         with self._connect() as conn:
-            # Remove tracks that no longer exist on disk
+            # Remove tracks that no longer exist on disk or were superseded by a .cue sheet
             stale = set(existing.keys()) - seen_paths
             if stale:
                 conn.executemany("DELETE FROM tracks WHERE path = ?", [(s,) for s in stale])
+            if cue_covered_files:
+                conn.executemany(
+                    "DELETE FROM tracks WHERE path = ? AND uri LIKE 'file://%'",
+                    [(c,) for c in cue_covered_files],
+                )
 
             for r in new_records:
                 conn.execute(
@@ -1022,6 +1235,50 @@ class LibraryDB:
             albums = conn.execute("SELECT COUNT(DISTINCT albumId) FROM tracks").fetchone()[0]
             artists = conn.execute("SELECT COUNT(DISTINCT artistId) FROM tracks").fetchone()[0]
             return {"tracks": tracks, "albums": albums, "artists": artists}
+
+    def update_track_metadata(
+        self, uri: str, title: str, artists: str, album: str, year: str, track_num: int
+    ) -> dict | None:
+        """Write updated metadata tags to the audio file (if non-CUE) and update SQLite."""
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM tracks WHERE uri = ?", (uri,)).fetchone()
+        if not row:
+            return None
+
+        title = title.strip() or row["name"]
+        artists = artists.strip() or row["artists"]
+        album = album.strip() or row["album"]
+        year = year.strip()[:4] if year else ""
+        track_num = max(0, int(track_num or 0))
+
+        filepath = row["path"]
+        mtime = row["mtime"]
+        size = row["size"]
+
+        if not uri.startswith("cue://") and filepath:
+            write_audio_tags(filepath, title, artists, album, year, track_num)
+            try:
+                st = Path(filepath).stat()
+                mtime = st.st_mtime
+                size = st.st_size
+            except OSError:
+                pass
+
+        aid = stable_id("alb", f"{artists}::{album}")
+        arid = stable_id("art", artists.split(",")[0].strip())
+
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE tracks SET
+                    name = ?, artists = ?, artistId = ?,
+                    album = ?, albumId = ?, year = ?,
+                    trackNum = ?, mtime = ?, size = ?
+                WHERE uri = ?
+                """,
+                (title, artists, arid, album, aid, year, track_num, mtime, size, uri),
+            )
+        return self.get_track(uri)
 
     def get_folder_tracks(self, folder_path: str) -> list[dict]:
         norm = str(Path(os.path.expanduser(folder_path)).resolve())

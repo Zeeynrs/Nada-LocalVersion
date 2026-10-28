@@ -111,6 +111,15 @@ class Session(QObject):
         self.changed.emit()
 
     @Property(bool, notify=changed)
+    def autoSaveLrc(self):
+        return bool(self.settings["auto_save_lrc"])
+
+    @autoSaveLrc.setter
+    def autoSaveLrc(self, value: bool):
+        self.settings["auto_save_lrc"] = bool(value)
+        self.changed.emit()
+
+    @Property(bool, notify=changed)
     def visualizerEnabled(self):
         return bool(self.settings["visualizer"])
 

@@ -14,13 +14,15 @@ class Library(QObject):
     scanningChanged = Signal()
     loaded = Signal(str, "QVariantMap")
     searchFinished = Signal(str, "QVariantMap")
+    tagsUpdated = Signal(str, "QVariantMap")
     toast = Signal(str)
 
-    def __init__(self, db: LibraryDB, settings, worker, parent=None):
+    def __init__(self, db: LibraryDB, settings, worker, player=None, parent=None):
         super().__init__(parent)
         self.db = db
         self.settings = settings
         self.worker = worker
+        self.player = player
         self._scanning = False
         self._stats = {"tracks": 0, "albums": 0, "artists": 0}
         username = getpass.getuser().capitalize()
@@ -188,3 +190,33 @@ class Library(QObject):
             lambda r: self.searchFinished.emit(query, r),
             lambda e: self.searchFinished.emit(query, {"error": str(e)}),
         )
+
+    # ---- tag metadata editor ----------------------------------------------
+
+    @Slot(str, str, str, str, str, int)
+    def updateTrackTags(self, uri: str, title: str, artists: str, album: str, year: str, track_num: int):
+        if not uri:
+            return
+
+        def job():
+            return self.db.update_track_metadata(uri, title, artists, album, year, track_num)
+
+        def done(updated):
+            if not updated:
+                self.toast.emit("Gagal memperbarui tag metadata")
+                return
+            self.reloadMetadataOnly()
+            if self.player and self.player.state.get("uri") == uri:
+                self.player._state.update({
+                    "trackName": updated.get("name", ""),
+                    "artists": updated.get("artists", ""),
+                    "artistId": updated.get("artistId", ""),
+                    "album": updated.get("album", ""),
+                    "albumId": updated.get("albumId", ""),
+                })
+                self.player.stateChanged.emit()
+                self.player.trackChanged.emit()
+            self.tagsUpdated.emit(uri, updated)
+            self.toast.emit("Tag metadata berhasil disimpan")
+
+        self.worker.run(job, done, lambda e: self.toast.emit(f"Gagal menyimpan tag: {e}"))

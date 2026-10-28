@@ -24,6 +24,7 @@ Item {
             page.loading = false
             if (data.error) session.toast(data.error)
         }
+        function onTagsUpdated() { page.reload() }
     }
 
     function playAt(i) {

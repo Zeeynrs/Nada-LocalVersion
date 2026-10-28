@@ -24,6 +24,7 @@ DEFAULTS = {
     "visualizer": True,
     "visualizer_style": "bars",  # "bars" | "wave"
     "online_lyrics": True,       # fallback ke LRCLIB bila .lrc lokal tidak ada
+    "auto_save_lrc": False,      # simpan otomatis lirik LRCLIB ke file .lrc di samping file audio
     "discord_rpc": True,         # Discord Rich Presence via IPC socket lokal
     "discord_client_id": DEFAULT_DISCORD_CLIENT_ID,
     "scrobble_enabled": False,

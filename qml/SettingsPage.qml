@@ -64,7 +64,7 @@ Item {
 
                 Label {
                     Layout.fillWidth: true
-                    text: "Nada Local memindai file FLAC, MP3, OPUS, OGG, M4A, WAV, dan playlist M3U dari folder di bawah ini."
+                    text: "Nada Local memindai file FLAC, MP3, OPUS, OGG, M4A, WAV, CUE Sheet (.cue), dan playlist M3U dari folder di bawah ini."
                     color: Theme.dim
                     font.pixelSize: 13
                     wrapMode: Text.WordWrap
@@ -231,6 +231,14 @@ Item {
                     Switch {
                         checked: session.onlineLyrics
                         onToggled: session.onlineLyrics = checked
+                    }
+                }
+                SettingRow {
+                    label: "Simpan Otomatis Lirik ke Berkas .lrc"
+                    hint: "Saat lirik berhasil diunduh dari LRCLIB, tulis otomatis file .lrc di samping file audio agar permanen secara offline."
+                    Switch {
+                        checked: session.autoSaveLrc
+                        onToggled: session.autoSaveLrc = checked
                     }
                 }
             }

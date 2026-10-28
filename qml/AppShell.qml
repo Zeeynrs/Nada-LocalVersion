@@ -33,7 +33,10 @@ Item {
     Connections {
         target: Nav
         function onOpen(kind, itemId) { shell.navigate(kind, itemId) }
+        function onEditTag(track) { tagEditorPopup.openForTrack(track) }
     }
+
+    TagEditorPopup { id: tagEditorPopup }
 
     ColumnLayout {
         anchors.fill: parent

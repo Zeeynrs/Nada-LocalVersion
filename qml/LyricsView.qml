@@ -149,4 +149,40 @@ Item {
             font.pixelSize: 18
         }
     }
+
+    Rectangle {
+        visible: lyrics.status === "ready"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 18
+        implicitWidth: saveRow.implicitWidth + 24
+        implicitHeight: 32
+        radius: 16
+        color: saveHover.hovered ? Theme.alpha(Theme.text, 0.18) : Theme.alpha(Theme.text, 0.10)
+        border.width: 1
+        border.color: lyrics.hasLocalLrc ? Theme.alpha("#7ee08f", 0.45) : Theme.alpha(Theme.text, 0.16)
+
+        HoverHandler { id: saveHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: lyrics.saveLrcToFile() }
+
+        Row {
+            id: saveRow
+            anchors.centerIn: parent
+            spacing: 6
+            Icon {
+                anchors.verticalCenter: parent.verticalCenter
+                glyph: "lyrics"
+                size: 14
+                color: lyrics.hasLocalLrc ? "#7ee08f" : Theme.text
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: lyrics.hasLocalLrc ? "✓ .lrc Lokal" : "Simpan .lrc"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: lyrics.hasLocalLrc ? "#7ee08f" : Theme.text
+            }
+        }
+    }
 }

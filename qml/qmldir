@@ -31,6 +31,7 @@ SeekBar 1.0 SeekBar.qml
 SettingsPage 1.0 SettingsPage.qml
 Sidebar 1.0 Sidebar.qml
 SleepTimerPopup 1.0 SleepTimerPopup.qml
+TagEditorPopup 1.0 TagEditorPopup.qml
 singleton Theme 1.0 Theme.qml
 Toast 1.0 Toast.qml
 TrackRow 1.0 TrackRow.qml

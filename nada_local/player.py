@@ -326,11 +326,22 @@ class Player(QObject):
     def _load_current_track(self, track: dict):
         self._switching_track = True
         old_uri = self._state.get("uri")
+        uri = track.get("uri") or ""
         filepath = track.get("path") or ""
-        if not filepath and track.get("uri", "").startswith("file://"):
-            filepath = unquote(track["uri"][7:])
+        start_ms = 0
+        end_ms = 0
 
-        self.mpv.play_file(filepath)
+        if uri.startswith("cue://") and "#" in uri:
+            raw_part, frag = uri[6:].split("#", 1)
+            filepath = unquote(raw_part)
+            parts = frag.split(":")
+            if len(parts) >= 3:
+                start_ms = int(parts[1] or 0)
+                end_ms = int(parts[2] or 0)
+        elif not filepath and uri.startswith("file://"):
+            filepath = unquote(uri[7:])
+
+        self.mpv.play_file(filepath, start_ms=start_ms, end_ms=end_ms)
         self._position_ms = 0
         self._state = {
             **self._state,

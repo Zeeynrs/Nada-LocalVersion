@@ -9,6 +9,11 @@ Item {
 
     Component.onCompleted: library.browseFolder(fv.currentPath || "")
 
+    Connections {
+        target: library
+        function onTagsUpdated() { library.browseFolder(page.fv.currentPath || "") }
+    }
+
     Flickable {
         id: flick
         anchors.fill: parent

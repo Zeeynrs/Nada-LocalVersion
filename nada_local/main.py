@@ -40,10 +40,11 @@ def main():
     worker = Async()
     db = LibraryDB()
     player = Player(db, worker, settings)
-    library = Library(db, settings, worker)
+    library = Library(db, settings, worker, player=player)
     lyrics = Lyrics(player, settings, worker)
     visualizer = Visualizer()
     session = Session(settings, player, library, worker)
+    lyrics.toast.connect(session.toast)
     integrations = Integrations(player, settings, worker)
     session.changed.connect(integrations._sync_discord)
 

@@ -141,6 +141,7 @@ Item {
         }
         MenuItem { text: "Buka album"; enabled: !!row.track.albumId; onTriggered: Nav.go("album", row.track.albumId) }
         MenuItem { text: "Buka artis"; enabled: !!row.track.artistId; onTriggered: Nav.go("artist", row.track.artistId) }
+        MenuItem { text: "Edit Tag Metadata…"; enabled: !!row.track.uri; onTriggered: Nav.openTagEditor(row.track) }
         MenuItem { text: "Buka folder file"; enabled: !!row.track.path; onTriggered: session.openContainingFolder(row.track.path) }
         MenuItem { text: "Salin path file"; enabled: !!row.track.path; onTriggered: session.copy(row.track.path) }
     }
