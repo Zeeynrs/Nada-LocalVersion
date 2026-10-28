@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Nada Local
+GenericName=Local Hi-Fi Music Player
+Comment=Pemutar musik lokal Hi-Fi ringan untuk desktop Linux (libmpv + QML)
+Exec=@BIN@ %U
+Icon=nada-local
+Terminal=false
+Categories=Audio;Music;Player;AudioVideo;
+MimeType=audio/flac;audio/mpeg;audio/ogg;audio/opus;audio/x-wav;audio/mp4;audio/aac;audio/x-mpegurl;
+Keywords=music;musik;lagu;flac;mp3;local;mpv;nada;
+StartupWMClass=nada-local

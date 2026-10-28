@@ -1,0 +1,35 @@
+AppShell 1.0 AppShell.qml
+ArtistPage 1.0 ArtistPage.qml
+CardGrid 1.0 CardGrid.qml
+Card 1.0 Card.qml
+CircularSpectrum 1.0 CircularSpectrum.qml
+CollectionPage 1.0 CollectionPage.qml
+Cover 1.0 Cover.qml
+DevicesPopup 1.0 DevicesPopup.qml
+EqualizerView 1.0 EqualizerView.qml
+HomePage 1.0 HomePage.qml
+IconButton 1.0 IconButton.qml
+Icon 1.0 Icon.qml
+ImmersivePlayer 1.0 ImmersivePlayer.qml
+LinkLabel 1.0 LinkLabel.qml
+LyricsView 1.0 LyricsView.qml
+Main 1.0 Main.qml
+NavItem 1.0 NavItem.qml
+singleton Nav 1.0 Nav.qml
+NButton 1.0 NButton.qml
+NMenu 1.0 NMenu.qml
+NScrollBar 1.0 NScrollBar.qml
+NSlider 1.0 NSlider.qml
+NTextField 1.0 NTextField.qml
+PageHeader 1.0 PageHeader.qml
+PlayerBar 1.0 PlayerBar.qml
+QueueView 1.0 QueueView.qml
+SearchPage 1.0 SearchPage.qml
+SeekBar 1.0 SeekBar.qml
+SettingsPage 1.0 SettingsPage.qml
+Sidebar 1.0 Sidebar.qml
+singleton Theme 1.0 Theme.qml
+Toast 1.0 Toast.qml
+TrackRow 1.0 TrackRow.qml
+TransportControls 1.0 TransportControls.qml
+VolumeControl 1.0 VolumeControl.qml
